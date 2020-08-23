@@ -4,22 +4,25 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ilhampraset/gingorm-boilerplate/models"
 	. "github.com/ilhampraset/gingorm-boilerplate/providers"
+	. "github.com/ilhampraset/gingorm-boilerplate/services"
 	"log"
 )
 
-func GetPeople(c *gin.Context) {
-	var people []models.Person
+// type Server struct {
+// 	personService
+// }
 
-	if err := DB.Find(&people).Error; err != nil {
-		c.AbortWithStatus(404)
-		log.Println(err)
-	} else {
+func GetPeople(personService *PersonService) gin.HandlerFunc {
+	fn := func(c *gin.Context) {
+		people := personService.FindAll()
 		c.JSON(200, gin.H{
 			"code":    200,
 			"message": "success",
 			"result":  people,
 		})
 	}
+	return gin.HandlerFunc(fn)
+
 }
 
 func GetPerson(c *gin.Context) {
@@ -57,7 +60,7 @@ func UpdatePerson(c *gin.Context) {
 		c.AbortWithStatus(404)
 	}
 	c.BindJSON(&person)
-	models.DB.Save(&person)
+	DB.Save(&person)
 	c.JSON(200, person)
 }
 
@@ -69,6 +72,6 @@ func DeletePerson(c *gin.Context) {
 		c.AbortWithStatus(404)
 	}
 
-	models.DB.Delete(&person)
+	DB.Delete(&person)
 	c.JSON(200, person)
 }

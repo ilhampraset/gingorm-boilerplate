@@ -6,7 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ilhampraset/gingorm-boilerplate/config"
 	"github.com/ilhampraset/gingorm-boilerplate/controllers"
-	"github.com/ilhampraset/gingorm-boilerplate/providers"
+	provider "github.com/ilhampraset/gingorm-boilerplate/providers"
+	. "github.com/ilhampraset/gingorm-boilerplate/repositories"
+	. "github.com/ilhampraset/gingorm-boilerplate/services"
 	"github.com/ilyakaznacheev/cleanenv"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 
@@ -27,15 +29,23 @@ func init() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	providers.InitDb(&cfg)
+	provider.InitDb(&cfg)
 
 }
 
 func main() {
+	db, err := provider.ConnectDatabase(&cfg)
 
+	if err != nil {
+		panic(err)
+	}
+
+	personRepository := NewPersonRepository(db)
+
+	personService := NewPersonService(personRepository)
 	app := gin.Default()
 
-	app.GET("/people", controllers.GetPeople)
+	app.GET("/people", controllers.GetPeople(personService))
 	app.GET("/people/:id", controllers.GetPerson)
 	app.POST("/people", controllers.CreatePerson)
 	app.PUT("/people/:id", controllers.UpdatePerson)
