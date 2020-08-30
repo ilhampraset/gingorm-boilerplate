@@ -1,21 +1,36 @@
 package repository
 
 import (
-	. "github.com/ilhampraset/gingorm-boilerplate/models"
+	m "github.com/ilhampraset/gingorm-boilerplate/models"
 	"github.com/jinzhu/gorm"
 )
 
 type PersonRepository struct {
-	db *gorm.DB
+	Db *gorm.DB
 }
 
-func (repository *PersonRepository) FindAll() []*Person {
-	people := []*Person{}
-
-	repository.db.Find(&people)
-	return people
+func ProvidePersonRepository(db *gorm.DB) *PersonRepository {
+	return &PersonRepository{Db: db}
 }
 
-func NewPersonRepository(database *gorm.DB) *PersonRepository {
-	return &PersonRepository{db: database}
+func (p *PersonRepository) FindAll() ([]*m.Person, error) {
+	var people []*m.Person
+
+	p.Db.Find(&people)
+	return people, nil
+}
+
+func (p *PersonRepository) FindByID(id uint) (m.Person, error) {
+	var person m.Person
+	p.Db.First(&person, id)
+	return person, nil
+}
+
+func (p *PersonRepository) Save(person m.Person) (m.Person, error) {
+	p.Db.Save(&person)
+	return person, nil
+}
+
+func (p *PersonRepository) Delete(person m.Person) {
+	p.Db.Delete(person)
 }

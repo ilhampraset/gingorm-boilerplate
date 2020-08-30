@@ -4,14 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/ilhampraset/gingorm-boilerplate/config"
-	"github.com/ilhampraset/gingorm-boilerplate/controllers"
-	provider "github.com/ilhampraset/gingorm-boilerplate/providers"
-	. "github.com/ilhampraset/gingorm-boilerplate/repositories"
-	. "github.com/ilhampraset/gingorm-boilerplate/services"
-	"github.com/ilyakaznacheev/cleanenv"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
 
+	"github.com/ilhampraset/gingorm-boilerplate/config"
+	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"os"
 )
 
@@ -29,27 +26,36 @@ func init() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	provider.InitDb(&cfg)
+	// provider.InitDb(&cfg)
 
 }
+func initDB(cfg *config.Config) *gorm.DB {
 
-func main() {
-	db, err := provider.ConnectDatabase(&cfg)
+	db, err := gorm.Open(cfg.Database.Connection,
+		fmt.Sprintf("%s:%s@tcp(%s:3306)/%s",
+			cfg.Database.Username,
+			cfg.Database.Password,
+			cfg.Database.Host,
+			cfg.Database.Name))
 
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
+	return db
+}
+func main() {
+	db := initDB(&cfg)
 
-	personRepository := NewPersonRepository(db)
+	defer db.Close()
+	personController := InitPersonAPI(db)
 
-	personService := NewPersonService(personRepository)
 	app := gin.Default()
 
-	app.GET("/people", controllers.GetPeople(personService))
-	app.GET("/people/:id", controllers.GetPerson)
-	app.POST("/people", controllers.CreatePerson)
-	app.PUT("/people/:id", controllers.UpdatePerson)
-	app.DELETE("/people/:id", controllers.DeletePerson)
+	app.GET("/people", personController.GetPeople)
+	app.GET("/people/:id", personController.GetPerson)
+	app.POST("/people", personController.CreatePerson)
+	app.PATCH("/people/:id", personController.UpdatePerson)
+	app.DELETE("/people/:id", personController.DeletePerson)
 	app.Run()
 }
 

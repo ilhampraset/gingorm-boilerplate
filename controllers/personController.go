@@ -2,76 +2,103 @@ package controllers
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ilhampraset/gingorm-boilerplate/models"
-	. "github.com/ilhampraset/gingorm-boilerplate/providers"
+	m "github.com/ilhampraset/gingorm-boilerplate/models"
 	. "github.com/ilhampraset/gingorm-boilerplate/services"
 	"log"
+	"net/http"
+	"strconv"
 )
 
-// type Server struct {
-// 	personService
-// }
+type PersonController struct {
+	service *PersonService
+}
 
-func GetPeople(personService *PersonService) gin.HandlerFunc {
-	fn := func(c *gin.Context) {
-		people := personService.FindAll()
+func ProvidePersonController(p *PersonService) PersonController {
+
+	return PersonController{service: p}
+}
+func (s *PersonController) GetPeople(c *gin.Context) {
+
+	people, err := s.service.FindAll()
+	if err != nil {
+		c.JSON(404, gin.H{
+			"code":    404,
+			"message": "error",
+			"error":   err,
+		})
+
+	} else {
 		c.JSON(200, gin.H{
 			"code":    200,
 			"message": "success",
 			"result":  people,
 		})
+
 	}
-	return gin.HandlerFunc(fn)
 
 }
 
-func GetPerson(c *gin.Context) {
-	id := c.Params.ByName("id")
+func (s *PersonController) GetPerson(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Params.ByName("id"))
 
-	var person models.Person
+	person := s.service.FindByID(uint(id))
 
-	if err := DB.Where("id = ?", id).First(&person).Error; err != nil {
-		c.AbortWithStatus(404)
-		log.Println(err)
-	} else {
-		c.JSON(200, gin.H{
-			"code":    200,
-			"message": "success",
-			"result":  person,
-		})
-	}
-}
-
-func CreatePerson(c *gin.Context) {
-	var person models.Person
-	c.BindJSON(&person)
-
-	DB.Create(&person)
 	c.JSON(200, gin.H{
-		"code":    201,
-		"message": "create success",
+		"code":    200,
+		"message": "success",
+		"result":  person,
 	})
 }
 
-func UpdatePerson(c *gin.Context) {
-	var person models.Person
-	id := c.Params.ByName("id")
-	if err := DB.Where("id = ?", id).First(&person).Error; err != nil {
-		c.AbortWithStatus(404)
+func (p *PersonController) CreatePerson(c *gin.Context) {
+	var person m.Person
+	err := c.ShouldBindJSON(&person)
+	if err != nil {
+		log.Fatalln(err)
+		c.Status(http.StatusBadRequest)
+		return
+	} else {
+		p.service.Save(person)
+		c.JSON(200, gin.H{
+			"code":    201,
+			"message": "create success",
+		})
 	}
-	c.BindJSON(&person)
-	DB.Save(&person)
-	c.JSON(200, person)
+
 }
 
-func DeletePerson(c *gin.Context) {
-	var person models.Person
-	id := c.Params.ByName("id")
-
-	if err := DB.Where("id = ?", id).First(&person).Error; err != nil {
-		c.AbortWithStatus(404)
+func (p *PersonController) UpdatePerson(c *gin.Context) {
+	var mp m.Person
+	err := c.ShouldBindJSON(&mp)
+	if err != nil {
+		log.Fatalln(err)
+		c.Status(http.StatusBadRequest)
+		return
 	}
 
-	DB.Delete(&person)
+	id, _ := strconv.Atoi(c.Params.ByName("id"))
+	person := p.service.FindByID(uint(id))
+	if person == (m.Person{}) {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	person.Firstname = mp.Firstname
+	person.Lastname = mp.Lastname
+	p.service.Save(person)
+	c.JSON(200, gin.H{
+		"code":    201,
+		"message": "update success",
+	})
+}
+
+func (p *PersonController) DeletePerson(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Params.ByName("id"))
+
+	person := p.service.FindByID(uint(id))
+	if person == (m.Person{}) {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	p.service.Delete(person)
 	c.JSON(200, person)
 }
